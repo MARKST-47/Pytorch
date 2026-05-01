@@ -21,3 +21,11 @@ full_trainset = torchvision.datasets.CIFAR10(
 full_testset = torchvision.datasets.CIFAR10(
     root="./data", train=False, download=False, transform=transform
 )
+
+# To make model overfit quick, we use a small subset
+# (private data)
+train_subset = Subset(full_trainset, range(5000))  # The "Train" set is our "Members"
+test_subset = Subset(full_testset, range(5000))  # The "Test" set is "Non-Members"
+
+trainloader = DataLoader(train_subset, batch_size=64, shuffle=True)
+testloader = DataLoader(test_subset, batch_size=64, shuffle=False)
