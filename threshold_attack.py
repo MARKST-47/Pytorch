@@ -55,8 +55,8 @@ model = CNN()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-print("\nTraining Target Model (5 Epochs)...")
-epochs = 5
+print("\nTraining Target Model (50 Epochs)...")
+epochs = 50
 for epoch in range(epochs):
     model.train()
     running_loss = 0.0
@@ -70,3 +70,44 @@ for epoch in range(epochs):
     print(f"Epoch {epoch + 1}/{epochs} | Loss: {running_loss / len(trainloader):.4f}")
 
 print("Training Complete.")
+
+print("\nRunning Threshold Membership Inference Attack:")
+
+
+# Helper function to get maximum confidence score for a dataset
+def get_confidence_scores(model, dataloader):
+    model.eval()
+    confidences = []
+    with torch.no_grad():
+        for inputs, _ in dataloader:
+            outputs = model(inputs)
+            # Convert raw logits to probabilities (0 to 1)
+            probs = torch.softmax(outputs, dim=1)
+            # The model's confidence is the highest probability among the 10 classes
+            max_probs, _ = torch.max(probs, dim=1)
+            confidences.extend(max_probs.numpy())
+    return np.array(confidences)
+
+
+# Extract scores for Members (Train) and Non-Members (Test)
+member_scores = get_confidence_scores(model, trainloader)
+non_member_scores = get_confidence_scores(model, testloader)
+
+# Define our attack rule: "If confidence > 90%, we accuse them of being in the training set."
+THRESHOLD = 0.90
+
+# Calculate True Positives (Members correctly guessed)
+true_positives = np.sum(member_scores >= THRESHOLD)
+tpr = (true_positives / len(member_scores)) * 100
+
+# Calculate False Positives (Non-members falsely accused)
+false_positives = np.sum(non_member_scores >= THRESHOLD)
+fpr = (false_positives / len(non_member_scores)) * 100
+
+print(f"Threshold set to: {THRESHOLD * 100}% Confidence")
+print(
+    f"True Positive Rate (TPR): {tpr:.2f}% ({true_positives} out of {len(member_scores)} members found)"
+)
+print(
+    f"False Positive Rate (FPR): {fpr:.2f}% ({false_positives} innocent people falsely accused)"
+)
