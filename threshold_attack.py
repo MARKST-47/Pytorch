@@ -29,3 +29,44 @@ test_subset = Subset(full_testset, range(5000))  # The "Test" set is "Non-Member
 
 trainloader = DataLoader(train_subset, batch_size=64, shuffle=True)
 testloader = DataLoader(test_subset, batch_size=64, shuffle=False)
+
+
+# Target model
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(3, 16, 3, padding=1)
+        self.relu = nn.ReLU()
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(16, 32, 3, padding=1)
+        self.fc1 = nn.Linear(32 * 8 * 8, 128)
+        self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.conv1(x)))
+        x = self.pool(self.relu(self.conv2(x)))
+        x = torch.flatten(x, 1)
+        x = self.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+
+model = CNN()
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+print("\nTraining Target Model (5 Epochs)...")
+epochs = 5
+for epoch in range(epochs):
+    model.train()
+    running_loss = 0.0
+    for inputs, labels in trainloader:
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item()
+    print(f"Epoch {epoch + 1}/{epochs} | Loss: {running_loss / len(trainloader):.4f}")
+
+print("Training Complete.")
